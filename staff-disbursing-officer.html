@@ -219,7 +219,6 @@ tr.row-link:hover{background:var(--pastel-bg);}
     <div class="brand-mark">🌾</div>
     <div class="brand-name">SasyaSamanvay</div>
   </a>
-  <a href="staff-login.html" class="back">Switch account →</a>
 </div>
 
 <div class="dash-shell">
@@ -323,5 +322,6 @@ async function checkStatus(id,button){button.disabled=true;try{const result=awai
 async function retryPayment(id,button){button.disabled=true;button.textContent='Retrying...';try{const result=await paymentRequest('/api/payments/'+id+'/retry',{method:'POST'});alert('Payment retry status: '+result.payment.status);}catch(error){alert(error.message);}finally{button.disabled=false;button.textContent='Retry Payment';}
 }
 </script>
+<script src="i18n.js"></script>
 </body>
 </html>

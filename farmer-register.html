@@ -311,7 +311,7 @@ tr.row-link:hover{background:var(--pastel-bg);}
       <div style="font-size:44px;margin-bottom:12px;">✅</div>
       <h1 style="margin-bottom:8px;">Account created</h1>
       <div class="sub" style="margin-bottom:26px;">Your farmer profile is ready. You can now log in and book your first procurement slot.</div>
-      <a href="farmer-login.html" class="btn btn-primary btn-block">Go to Login</a>
+      <a id="registrationCompleteLink" href="farmer-login.html" class="btn btn-primary btn-block">Go to Login</a>
     </div>
 
   </div>
@@ -353,9 +353,20 @@ async function createAccount(){
     });
     const result = await response.json();
     if(!response.ok) throw new Error(result.error);
+    const returnTarget = new URLSearchParams(window.location.search).get('return');
+    const activeSession = JSON.parse(localStorage.getItem('sasyaSession') || 'null');
+    const shouldReturnToIncharge = returnTarget === 'staff' && activeSession && activeSession.type === 'staff' && activeSession.staff && activeSession.staff.role === 'incharge';
+    if (shouldReturnToIncharge) {
+      document.getElementById('registrationCompleteLink').href = '/staff-center-incharge.html';
+      document.querySelector('#panel4 .sub').textContent = 'Farmer profile created successfully. Return to the Center In-Charge dashboard.';
+      goTo(4);
+      setTimeout(() => window.location.replace('/staff-center-incharge.html'), 700);
+      return;
+    }
     goTo(4);
   }catch(error){ alert(error.message || 'Unable to create your account.'); }
 }
 </script>
+<script src="i18n.js"></script>
 </body>
 </html>

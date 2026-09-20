@@ -31,9 +31,6 @@ body{
   margin:0;font-family:'Work Sans', sans-serif;color:var(--text-dark);
   background:var(--pastel-bg);line-height:1.5;
 }
-h1,h2,h3,.serif{font-family:'Lora', serif;color:var(--dark-green);margin:0;font-weight:600;}
-a{text-decoration:none;color:inherit;}
-img{max-width:100%;display:block;}
 
 /* ---------- topbar (app pages) ---------- */
 .topbar{
@@ -219,17 +216,22 @@ tr.row-link:hover{background:var(--pastel-bg);}
     <div class="brand-mark">🌾</div>
     <div class="brand-name">SasyaSamanvay</div>
   </a>
-  <a href="staff-login.html" class="back">Switch account →</a>
 </div>
 
 <div class="dash-shell">
   <div class="sidebar">
     <div class="role-tag">Quantity Inspector</div>
-    <a class="nav-item active">⚖️ Weighing</a>
+    <a class="nav-item active" onclick="showTab('weighing')">⚖️ Weighing</a>
+    <a class="nav-item" onclick="showTab('farmers')">🌾 Farmer Profiles</a>
     <a class="nav-item" href="index.html" id="staffLogout" style="margin-top:20px;color:var(--text-secondary);">↩ Logout</a>
   </div>
 
   <div class="dash-main">
+    <div id="tab-farmers" style="display:none;">
+      <div class="dash-header"><div><h1>Farmer profiles</h1><div class="sub">Farmers assigned to this procurement center</div></div></div>
+      <div class="panel"><table id="quantityFarmerTable"><tr><th>Name</th><th>Farmer ID</th><th>Crop</th></tr><tr><td colspan="3">Loading farmer profiles...</td></tr></table></div>
+    </div>
+    <div id="tab-weighing">
     <div class="dash-header">
       <div><h1>Weighing station</h1><div class="sub">Guntur District Procurement Center · Today, 6 Sep 2026</div></div>
     </div>
@@ -264,7 +266,7 @@ tr.row-link:hover{background:var(--pastel-bg);}
         <label>Actual weight (quintals)</label>
         <input type="number" id="actualWeight" placeholder="Enter actual weight">
       </div>
-      <button class="btn btn-primary" onclick="submitWeight()">Submit Quantity</button>
+      <button id="submitWeightBtn" class="btn btn-primary" onclick="submitWeight()" type="button">Submit Quantity</button>
     </div>
 
     <div class="panel">
@@ -274,6 +276,7 @@ tr.row-link:hover{background:var(--pastel-bg);}
         <tr><td>#39</td><td>M. Venkatesh</td><td>Paddy</td><td>32 qtl</td><td>31.4 qtl</td></tr>
         <tr><td>#38</td><td>P. Anitha</td><td>Cotton</td><td>10 qtl</td><td>9.8 qtl</td></tr>
       </table>
+    </div>
     </div>
   </div>
 </div>
@@ -285,6 +288,10 @@ async function guardQuantity(){const response=await fetch('/api/auth/session',{h
 guardQuantity();
 document.getElementById('staffLogout').addEventListener('click',async event=>{event.preventDefault();await fetch('/api/auth/logout',{method:'POST',headers:quantityHeaders});localStorage.removeItem('sasyaSession');window.location.replace('index.html');});
 loadWeighingQueue();
+loadQuantityFarmers();
+/*
+function showTab(name){['weighing','farmers'].forEach(tab=>{document.getElementById('tab-'+tab).style.display=tab===name?'block':'none';});document.querySelectorAll('.sidebar .nav-item').forEach(item=>item.classList.remove('active'));const active=document.querySelector('.sidebar .nav-item[onclick*="'+name+'"]');if(active)active.classList.add('active');}
+async function loadQuantityFarmers(){try{const response=await fetch('/api/staff/procurements',{headers:quantityHeaders});const result=await response.json();if(!response.ok)throw new Error(result.error||'Unable to load farmer profiles.');const table=document.getElementById('quantityFarmerTable');table.innerHTML='<tr><th>Farmer ID</th><th>Name</th><th>Crop</th><th>Status</th></tr>'+(result.procurements.length?result.procurements.map(item=>'<tr><td><a href="/quantity-inspector/farmers/'+item.farmer.id+'">'+item.farmer.id+'</a></td><td><a href="/quantity-inspector/farmers/'+item.farmer.id+'">'+item.farmer.name+'</a></td><td>'+item.procurement.crop+'</td><td>'+item.procurement.stage+'</td></tr>').join(''):'<tr><td colspan="4">No farmers assigned to this center.</td></tr>');}catch(error){document.getElementById('quantityFarmerTable').innerHTML='<tr><td colspan="4">'+error.message+'</td></tr>';}}
 async function loadWeighingQueue(){try{const response=await fetch('/api/staff/procurements',{headers:quantityHeaders});const result=await response.json();if(!response.ok)throw new Error(result.error||'Unable to load weighing queue.');const eligible=result.procurements.filter(item=>item.procurement.stage==='quality-inspection'&&String(item.procurement.quality?.decision||'').toLowerCase()==='accepted'&&!item.procurement.quantity);const table=document.getElementById('weighingQueue');table.innerHTML='<tr><th>Farmer ID</th><th>Farmer</th><th>Crop</th><th>Expected qty</th><th></th></tr>'+(eligible.length?eligible.map(item=>'<tr><td>'+item.farmer.id+'</td><td>'+item.farmer.name+'</td><td>'+item.procurement.crop+'</td><td>'+item.procurement.expectedQuantity+' qtl</td><td><button class="btn btn-outline btn-sm" onclick="loadFarmer(\''+item.farmer.id+'\',\''+item.farmer.name+'\',\''+item.farmer.id+'\',\''+item.procurement.crop+'\',\''+item.procurement.expectedQuantity+'\')">Weigh</button></td></tr>').join(''):'<tr><td colspan="5">No accepted procurements are waiting for weighing.</td></tr>';}catch(error){document.getElementById('weighingQueue').innerHTML='<tr><td colspan="5">'+error.message+'</td></tr>';}}
 let currentProcurementId='F-1048';
 function loadFarmer(id, name, token, crop, expected){
@@ -299,8 +306,16 @@ async function submitWeight(){
   const w = document.getElementById('actualWeight').value;
   if(!w || Number(w)<=0){ alert('Enter a valid positive weight before submitting.'); return; }
   const button=event.currentTarget;button.disabled=true;button.textContent='Saving...';
-  try{const response=await fetch('/api/procurements/'+currentProcurementId+'/weigh',{method:'POST',headers:{'Content-Type':'application/json',...quantityHeaders},body:JSON.stringify({weight:Number(w)})});const result=await response.json();if(!response.ok)throw new Error(result.error);const table=document.getElementById('completedTable');const row=table.insertRow(1);row.innerHTML='<td>'+document.getElementById('curToken').textContent+'</td><td>'+document.getElementById('curName').textContent+'</td><td>'+document.getElementById('curCrop').textContent+'</td><td>'+document.getElementById('curExpected').textContent+'</td><td>'+w+' qtl</td>';alert('Actual weight recorded successfully.');}catch(error){alert(error.message);}finally{button.disabled=false;button.textContent='Submit Quantity';}
+  try{const response=await fetch('/api/procurements/'+currentProcurementId+'/weigh',{method:'POST',headers:{'Content-Type':'application/json',...quantityHeaders},body:JSON.stringify({weight:Number(w)})});const result=await response.json();if(!response.ok)throw new Error(result.error);const table=document.getElementById('completedTable');const row=table.insertRow(1);row.innerHTML='<td>'+document.getElementById('curToken').textContent+'</td><td>'+document.getElementById('curName').textContent+'</td><td>'+document.getElementById('curCrop').textContent+'</td><td>'+document.getElementById('curExpected').textContent+'</td><td>'+w+' qtl</td>';alert('Quantity submitted successfully');loadWeighingQueue();}catch(error){alert(error.message);}finally{button.disabled=false;button.textContent='Submit Quantity';}
 }
+*/
+function showTab(name){['weighing','farmers'].forEach(tab=>{document.getElementById('tab-'+tab).style.display=tab===name?'block':'none';});document.querySelectorAll('.sidebar .nav-item').forEach(item=>item.classList.remove('active'));const active=document.querySelector('.sidebar .nav-item[onclick*="'+name+'"]');if(active)active.classList.add('active');}
+let currentProcurementId='F-1048';
+function loadFarmer(id,name,token,crop,expected){currentProcurementId=id;document.getElementById('curName').textContent=name;document.getElementById('curToken').textContent=token;document.getElementById('curCrop').textContent=crop;document.getElementById('curExpected').textContent=expected+' qtl';document.getElementById('actualWeight').value='';}
+async function loadWeighingQueue(){try{const response=await fetch('/api/staff/procurements',{headers:quantityHeaders});const result=await response.json();if(!response.ok)throw new Error(result.error||'Unable to load weighing queue.');const eligible=result.procurements.filter(item=>item.procurement.stage==='quality-inspection'&&String(item.procurement.quality?.decision||'').toLowerCase()==='accepted'&&!item.procurement.quantity);const table=document.getElementById('weighingQueue');table.innerHTML='<tr><th>Farmer ID</th><th>Farmer</th><th>Crop</th><th>Expected qty</th><th></th></tr>';if(!eligible.length){table.insertAdjacentHTML('beforeend','<tr><td colspan="5">No accepted procurements are waiting for weighing.</td></tr>');return;}eligible.forEach(item=>{const row=table.insertRow(-1);row.innerHTML='<td>'+item.farmer.id+'</td><td>'+item.farmer.name+'</td><td>'+item.procurement.crop+'</td><td>'+item.procurement.expectedQuantity+' qtl</td><td><button class="btn btn-outline btn-sm" type="button">Weigh</button></td>';row.querySelector('button').addEventListener('click',()=>loadFarmer(item.farmer.id,item.farmer.name,item.farmer.id,item.procurement.crop,item.procurement.expectedQuantity));});}catch(error){document.getElementById('weighingQueue').innerHTML='<tr><td colspan="5">'+error.message+'</td></tr>';}}
+async function submitWeight(){const w=document.getElementById('actualWeight').value;if(!w||Number(w)<=0){alert('Enter a valid positive weight before submitting.');return;}const button=document.getElementById('submitWeightBtn');button.disabled=true;button.textContent='Saving...';try{const response=await fetch('/api/procurements/'+currentProcurementId+'/weigh',{method:'POST',headers:{'Content-Type':'application/json',...quantityHeaders},body:JSON.stringify({weight:Number(w)})});const result=await response.json();if(!response.ok)throw new Error(result.error);alert('Quantity submitted successfully');loadWeighingQueue();}catch(error){alert(error.message);}finally{button.disabled=false;button.textContent='Submit Quantity';}}
+async function loadQuantityFarmers(){try{const response=await fetch('/api/staff/procurements',{headers:quantityHeaders});const result=await response.json();if(!response.ok)throw new Error(result.error||'Unable to load farmer profiles.');const table=document.getElementById('quantityFarmerTable');table.innerHTML='<tr><th>Name</th><th>Farmer ID</th><th>Crop</th></tr>'+(result.procurements.length?result.procurements.map(item=>'<tr class="row-link" onclick="window.location.href=\'/quantity-inspector/farmers/'+item.farmer.id+'\'"><td>'+item.farmer.name+'</td><td>'+item.farmer.id+'</td><td>'+item.procurement.crop+'</td></tr>').join(''):'<tr><td colspan="3">No farmers assigned to this center.</td></tr>');}catch(error){document.getElementById('quantityFarmerTable').innerHTML='<tr><td colspan="3">'+error.message+'</td></tr>';}}
 </script>
+<script src="i18n.js"></script>
 </body>
 </html>

@@ -219,7 +219,6 @@ tr.row-link:hover{background:var(--pastel-bg);}
     <div class="brand-mark">🌾</div>
     <div class="brand-name">SasyaSamanvay</div>
   </a>
-  <a href="staff-login.html" class="back">Switch account →</a>
 </div>
 
 <div class="dash-shell">
@@ -228,7 +227,7 @@ tr.row-link:hover{background:var(--pastel-bg);}
     <a class="nav-item active" onclick="showTab('overview')">📊 Overview</a>
     <a class="nav-item" onclick="showTab('farmers')">🌾 Farmer Profiles</a>
     <a class="nav-item" href="/center-incharge/reports">📄 Reports</a>
-    <a class="nav-item" href="/farmer-register.html">➕ Register Farmer</a>
+    <a class="nav-item" href="/farmer-register.html?return=staff">➕ Register Farmer</a>
     <a class="nav-item" href="index.html" id="staffLogout" style="margin-top:20px;color:var(--text-secondary);">↩ Logout</a>
   </div>
 
@@ -240,7 +239,7 @@ tr.row-link:hover{background:var(--pastel-bg);}
           <h1>Center overview</h1>
           <div class="sub">Guntur District Procurement Center · Today, 6 Sep 2026</div>
         </div>
-        <a class="btn btn-primary" href="/farmer-register.html">➕ Register a Farmer</a>
+        <a class="btn btn-primary" href="/farmer-register.html?return=staff">➕ Register a Farmer</a>
       </div>
 
       <div class="kpi-grid">
@@ -330,5 +329,6 @@ async function markArrived(id,button){
   try{await staffRequest('/api/procurements/'+id+'/arrive',{method:'POST'});button.textContent='Arrived';button.classList.add('btn-primary');alert('Farmer arrival recorded successfully.');}catch(error){button.disabled=false;button.textContent='Arrived';alert(error.message);}
 }
 </script>
+<script src="i18n.js"></script>
 </body>
 </html>
